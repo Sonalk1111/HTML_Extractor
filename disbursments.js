@@ -33,7 +33,7 @@ fetch(`https://seller.jiomart.com/ril_users/api/account_ledgers.json?_ln=en&page
 // module.exports = fetchDisbursments
 
 
-export const fetchDisbursmentDetails = (id) =>  fetch(`https://seller.jiomart.com/ril_users/api/account_ledgers.json?_ln=en&page=1&per_page=50&q%5Bdisbursement_number_eq%5D=${id}`, {
+export const fetchDisbursmentDetails = (id, page = 1) => fetch(`https://seller.jiomart.com/ril_users/api/account_ledgers.json?_ln=en&page=${page}&per_page=50&q%5Bdisbursement_number_eq%5D=${id}`, {
   "headers": {
     "accept": "application/json, text/plain, */*",
     "accept-language": "en-US,en;q=0.9",
@@ -50,5 +50,10 @@ export const fetchDisbursmentDetails = (id) =>  fetch(`https://seller.jiomart.co
   },
   "body": null,
   "method": "GET"
-}).then(r => r.json()).then(r => r.result)
+}).then(r => {
+  // console.log(r.json())
+  return r.json()
+}).catch(console.log)
+// .then(r => r.result)
+// 
 
