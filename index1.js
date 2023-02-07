@@ -13,35 +13,31 @@ import fs from "fs";
 fs.writeFileSync("./result1.csv","marketplace\tmarketplace_transaction_id\torder_id\tmarketplace_sku\ttransaction_amount\ttransaction_type\ttransaction_date\ttransaction_group\tremark\tshipment_id\tquantity\tigst\tcgst\tsgst\ttcs_igst\ttcs_cgst\ttcs_sgst\ttds\n")
 
 
-const program = from(fetchDisbursments('2022-06-01', '2022-06-01')).pipe(
-  take(1),
+const program = from(fetchDisbursments('2022-04-01', '2022-04-30')).pipe(
+  // take(1),
     flatMap(ids => ids),
     // take(1),
     flatMap((disbursment) => {
-        var count = 1
-        // const page = 1
+        // var count = 1
+        console.log(disbursment.accountable_number)
         return of(disbursment.accountable_number).pipe(
-            flatMap(x => from(fetchDisbursmentDetails(x)).pipe(
+          map(x => from(fetchDisbursmentDetails(x))
+            .pipe(
               expand(val => {
-
-                if (count < 4) {
-                  count = count++
-                  return from(fetchDisbursmentDetails(x, count))
-                } else {
-                  return from(val.result)
+                const { meta } = val
+                if (meta.pagination.total_count >= meta.pagination.per_page * meta.pagination.page) {
+                  // console.log(meta.pagination.page + 1)
+                  return from(fetchDisbursmentDetails(x, meta.pagination.page + 1))
                 }
-                // else {
-                //   return empty()
-                // }
-              })
-            )),
+                return empty()
+              }),
+              flatMap(x => x.result)
+            )
+            ),
             map(async values => {
                 const details = await toArray(from(values).pipe(
                   groupBy(val => val.event),
-                  // filter(g => g.accountable_number === '5647405857'),
-                  // tap(console.log),
                   map(async g => {
-                    // console.dir(g, {depth: null})
                     if (g.key === 'Invoice') {
                       return {
                         type: g.key,
@@ -53,17 +49,12 @@ const program = from(fetchDisbursments('2022-06-01', '2022-06-01')).pipe(
                           })),
                           map(async ({ shipmentId, details_ship }) => {
                             const shipmentDetails = await getShipmentInvoice(shipmentId).then(extractShipmentData)
-                            // const total = details_ship[0].amount.value
-                            // const extractedTotal = 
                             return {
                               shipmentId,
                               details_ship,
                               shipmentDetails
                             }
                           }),
-                          // tap(({ shipmentDetails, details_ship }) => {
-                          //   const total = parseFloat(shipmentDetails['Transaction Amt']) + parseFloat(shipmentDetails['IGST'])
-                          // })
                         ))
                       }
                     } else if (g.key === 'Return') {
@@ -220,7 +211,7 @@ const program = from(fetchDisbursments('2022-06-01', '2022-06-01')).pipe(
 // let documents = []
 
 program.forEach(d => {
-  console.dir(d, { depth : null })
+  // console.dir(d, { depth : null })
   fs.appendFileSync("./result1.csv", `\n`)
   fs.appendFileSync("./result1.csv", `JIOMART\t${d.transactionId}\t \t \t${d.total}\tDisbursement\t${d.transactionDate}\t \t \t \t \t \t \t \t \t \t \t \n`)
   for (let v of d.details){
@@ -271,35 +262,6 @@ program.forEach(d => {
             }
           })
         }
-        // for(let val of v.details_ship){
-        //   // console.log(shipment[0])
-        //   for(let v1 of val.prepaid){
-        //     // console.log(shipment)
-        //       shipment.map((x) => {
-        //         if(v1.title.match(x)){
-        //           // console.log(v1.collection_fee_charge)
-                //   fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.commission_fee_charge}\tSeller_Commision\t0\tCommision\t \t${x}\t$0\t${v1.commission_fee_service_tax}\t0\t0\t0\t0\t0\t0\n`)
-                //   fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.fixed_fee_charge || 0}\tFixed_fee\t0\tCommision\t \t${x}\t$0\t${v1.fixed_fee_service_tax || 0}\t0\t0\t0\t0\t0\t0\n`)
-                //   fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.collection_fee_charge || 0}\tCollection_fee_charge\t0\tCommision\t \t${x}\t$0\t${v1.collection_fee_service_tax || 0}\t0\t0\t0\t0\t0\t0\n`)
-                //   fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.forward_logistics_fee_charge || 0}\tForward_logistics_fee_charge\t0\tCommision\t \t${x}\t \t${v1.forward_logistics_fee_service_tax || 0}\t0\t0\t0\t0\t0\t0\n`)
-                //   fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.shipping_delay_penalty_fee_charge || 0}\tShipping_delay_penalty_fee_charge\t0\tCommision\t \t${x}\t \t${v1.shipping_delay_penalty_fee_charge|| 0}\t0\t0\t0\t0\t0\t0\n`)
-                //   fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.reverse_logistics_fee_charge || 0}\t reverse_logistics_fee_charge\t0\tCommision\t \t${x}\t$0\t${v1.reverse_logistics_fee_service_tax || 0}\t0\t0\t0\t0\t0\t0\n\n`)
-                // }
-        //       })      
-        //   }
-        //   for(let v1 of val.cod){
-        //       shipment.map((x) => {
-        //         if(v1.title.match(x)){
-        //           fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.commission_fee_charge}\tSeller_Commision\t0\tCommision\t \t${x}\t$0\t${v1.commission_fee_service_tax}\t0\t0\t0\t0\t0\t0\n`)
-        //           fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${(v1.fixed_fee_charge || 0)}\tFixed_fee\t0\tCommision\t \t${x}\t$0\t${v1.fixed_fee_service_tax || 0}\t0\t0\t0\t0\t0\t0\n`)
-        //           fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.collection_fee_charge || 0}\tCollection_fee_charge\t0\tCommision\t \t${x}\t$0\t${v1.collection_fee_service_tax || 0}\t0\t0\t0\t0\t0\t0\n`)
-        //           fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.forward_logistics_fee_charge || 0}\tForward_logistics_fee_charge\t0\tCommision\t \t${x}\t \t${v1.forward_logistics_fee_service_tax || 0}\t0\t0\t0\t0\t0\t0\n`)
-        //           fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.shipping_delay_penalty_fee_charge || 0}\tShipping_delay_penalty_fee_charge\t0\tCommision\t \t${x}\t \t${v1.shipping_delay_penalty_fee_charge|| 0}\t0\t0\t0\t0\t0\t0\n`)
-        //           fs.appendFileSync("./result1.csv", `JIOMART\tt-id\to-id\tsku_id\t${v1.reverse_logistics_fee_charge || 0}\t reverse_logistics_fee_charge\t0\tCommision\t \t${x}\t$0\t${v1.reverse_logistics_fee_service_tax || 0}\t0\t0\t0\t0\t0\t0\n\n`)
-        //         }
-        //       })      
-        //   }
-        // }
       }
       else if(v.type == 'Credit Note'){
         for(let val of v.details_ship){
@@ -318,7 +280,8 @@ program.forEach(d => {
       }
     }
     
-  }).catch(console.log)
+  })
+  // .catch(console.log)
 
 // if(v.type === 'Invoice') {
 //   for(let val of v.details_ship) {

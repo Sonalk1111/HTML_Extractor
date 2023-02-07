@@ -96,7 +96,7 @@ program.forEach(d => {
   // } else {
   //   console.log("Yaya", calculatedTotal, total)
   // }
-  console.dir(d, { depth : null })
+  // console.dir(d, { depth : null })
   // fs.appendFileSync("./results.tsv", `JIOMART\t${d.transactionId}\t \t \t${d.total}\t${d.type}\t${d.transactionDate}\t${d.group}\n`)
 
   for (let v of d.details) {
